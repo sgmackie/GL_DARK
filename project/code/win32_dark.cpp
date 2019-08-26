@@ -18,7 +18,7 @@
 #include <GL/gl.h>
 
 // 3rd Party
-void *win32_VirtualAlloc(size_t Size)
+void *win32_Alloc(size_t Size)
 {
     void *Result = 0;
     Result = VirtualAlloc(0, Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
@@ -31,15 +31,38 @@ void *win32_VirtualAlloc(size_t Size)
     return Result;
 }
 
-void win32_VirtualFree(void *Pointer)
+void win32_Free(void *Pointer)
 {
     VirtualFree(Pointer, 0, MEM_RELEASE);
 }
 
+// TODO: Add function to check size of previously allocated block - might already have the space and not need to alloc
+void *win32_ReAlloc(void *Pointer, size_t Size)
+{
+    // Block is null - just alloc
+    if(!Pointer)
+    {
+        return win32_Alloc(Size);
+    }
+
+    // Create temporary block and copy over
+    void *Result = 0;
+    Result = VirtualAlloc(0, Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    if(Result == 0)
+    {
+        printf("win32: VirtualReAlloc failed!\n");
+        return 0;
+    }
+    memset(Result, 0, Size);
+    memcpy(Result, Pointer, Size);
+    win32_Free(Pointer);
+    return Result;
+}
+
 #define STB_IMAGE_IMPLEMENTATION
-#define STBI_MALLOC(Size)       win32_VirtualAlloc(Size)
-#define STBI_REALLOC(p,newsz)   realloc(p,newsz) //TODO: Create win32_Realloc
-#define STBI_FREE(Pointer)      win32_VirtualFree(Pointer)
+#define STBI_MALLOC(Size)               win32_Alloc(Size)
+#define STBI_REALLOC(Pointer, Size)     win32_ReAlloc(Pointer, Size)
+#define STBI_FREE(Pointer)              win32_Free(Pointer)
 #include "stb_image.h"
 
 // Source
@@ -370,7 +393,7 @@ int main()
         }
 
         // Unload textures
-        // win32_VirtualFree(TextureFile.imageData);
+        // win32_Free(TextureFile.imageData);
 
         DestroyWindow(WindowHandle);
         UnregisterClass(WindowClass.lpszClassName, WindowClass.hInstance);        
