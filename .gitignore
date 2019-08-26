@@ -1,0 +1,6 @@
+# Misc
+examples/
+misc/
+build/
+*.lnk
+.vscode/
