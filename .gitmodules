@@ -1,0 +1,6 @@
+[submodule "code/core"]
+	path = code/core
+	url = https://github.com/sgmackie/core.git
+[submodule "project/code/core"]
+	path = project/code/core
+	url = https://github.com/sgmackie/core.git
