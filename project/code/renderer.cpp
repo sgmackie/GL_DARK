@@ -19,7 +19,6 @@ void CheckCompilerLogs(GLuint ShaderID)
     }
 }
 
-// TODO: Lookup GLSL includes - reading a file and converting to a string
 GLuint CreateShaderProgram(MEMORY_ARENA *Arena)
 {
     // Compiling
@@ -104,7 +103,7 @@ GLuint CreateShaderProgram(MEMORY_ARENA *Arena)
 
 RENDERER InitialiseRenderer(MEMORY_ARENA *Arena, V2U Dimensions)
 {
-    RENDERER RenderInfo = {};
+    RENDERER RenderInfo         = {};
     RenderInfo.RenderDimensions = Dimensions;
     RenderInfo.ShaderProgram    = CreateShaderProgram(Arena);
     return RenderInfo;
