@@ -25,7 +25,7 @@ if not exist %ObjDir% mkdir %ObjDir%
 set CompilerFlags=-g -gcodeview -pedantic
 
 :: Set warning labels:
-set CommonWarnings=-Wall -Werror
+set CommonWarnings=-Wall -Werror -Wno-writable-strings -Wno-gnu-anonymous-struct
 
 :: Set Compiler optimsation level
 REM set CompilerOpt=-O3 -march=native

@@ -1,69 +1,22 @@
 
-#include <stdio.h>
-#include "types.h"
-
 #define DEFAULT_WIDTH 1280
 #define DEFAULT_HEIGHT 720
 #define DEFAULT_HZ 120
 
-// Windows
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <timeapi.h>
-#include <tchar.h>
-#define ANSI(code) ""
+#define OPENGL_VERSION 460
+
+#include "core/core.h"
 
 // OpenGL
 #include <glew.h>
 #include <GL/gl.h>
 
 // 3rd Party
-void *win32_Alloc(size_t Size)
-{
-    void *Result = 0;
-    Result = VirtualAlloc(0, Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-    if(Result == 0)
-    {
-        printf("win32: VirtualAlloc failed!\n");
-        return 0;
-    }
-    memset(Result, 0, Size);
-    return Result;
-}
-
-void win32_Free(void *Pointer)
-{
-    VirtualFree(Pointer, 0, MEM_RELEASE);
-}
-
-// TODO: Add function to check size of previously allocated block - might already have the space and not need to alloc
-void *win32_ReAlloc(void *Pointer, size_t Size)
-{
-    // Block is null - just alloc
-    if(!Pointer)
-    {
-        return win32_Alloc(Size);
-    }
-
-    // Create temporary block and copy over
-    void *Result = 0;
-    Result = VirtualAlloc(0, Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-    if(Result == 0)
-    {
-        printf("win32: VirtualReAlloc failed!\n");
-        return 0;
-    }
-    memset(Result, 0, Size);
-    memcpy(Result, Pointer, Size);
-    win32_Free(Pointer);
-    return Result;
-}
-
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_MALLOC(Size)               win32_Alloc(Size)
 #define STBI_REALLOC(Pointer, Size)     win32_ReAlloc(Pointer, Size)
 #define STBI_FREE(Pointer)              win32_Free(Pointer)
-#include "stb_image.h"
+#include "external/stb_image.h"
 
 // Source
 #include "renderer.cpp"
@@ -101,6 +54,16 @@ LRESULT CALLBACK WindowProc(HWND Window, UINT Message, WPARAM WParam, LPARAM LPa
 
     switch(Message)
     { 
+        case WM_DESTROY:
+        {
+            GlobalRunning = false;
+            return 0;
+        }
+        case WM_CLOSE:
+        {
+            GlobalRunning = false;
+            return 0;
+        }
         default:
         {
             Result = DefWindowProcA(Window, Message, WParam, LParam);
@@ -270,7 +233,7 @@ void win32_DisplayBuffer(HDC DeviceContext, i16 Width, i16 Height, RENDERER *Ren
 
     // Vertex Shader
     glUseProgram(RenderInfo->ShaderProgram);
-    glBindVertexArray(RenderInfo->VAO);
+    glBindVertexArray(RenderInfo->VertexArrayObject);
     // glDrawArrays(GL_TRIANGLES, 0, 3); // Drawing primitive, starting index of vertex array, how many vertices to draw
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -280,6 +243,16 @@ void win32_DisplayBuffer(HDC DeviceContext, i16 Width, i16 Height, RENDERER *Ren
 
 int main()
 {
+    // Create allocator
+    VIRTUAL_ALLOCATOR VirtualAlloctor = {};
+    VirtualAlloctor.Create(Megabytes(10));
+    
+    // Allocate memory arenas from virtual pages
+    MEMORY_ARENA EngineArena = {};
+    void *EngineBlock = VirtualAlloctor.Alloc(Megabytes(10));
+    EngineArena.Init(EngineBlock, Megabytes(10));    
+    Assert(EngineBlock, "win32: Failed to create memory arena!");
+
     //Create window and it's rendering handle
     WNDCLASSEX WindowClass = {sizeof(WNDCLASSEX), 
                             CS_CLASSDC, WindowProc, 0L, 0L, 
@@ -314,8 +287,9 @@ int main()
         // Assets
         // Load textures
 
-        // Systems
-        RENDERER RenderInfo = InitialiseRenderer();
+        // Create and link OpenGL renderer (compile shaders)
+        V2U RenderDimensions = {{DEFAULT_WIDTH, DEFAULT_HEIGHT}};
+        RENDERER RenderInfo = InitialiseRenderer(&EngineArena, RenderDimensions);
         // ConstructTriangle(&RenderInfo);
         ConstructQuad(&RenderInfo);
 
@@ -384,7 +358,7 @@ int main()
             else
             {
                 f32 Difference = (SecondsElapsedForFrame - TargetSecondsPerFrame);
-                printf("win32: Missed frame rate!\tDifference: %f\t[Current: %f, Target: %f]\n", Difference, SecondsElapsedForFrame, TargetSecondsPerFrame);
+                printf("win32: Missed frame rate!\tDifference: %File\t[Current: %File, Target: %File]\n", Difference, SecondsElapsedForFrame, TargetSecondsPerFrame);
             } 
 
             //Prepare timers before next loop
